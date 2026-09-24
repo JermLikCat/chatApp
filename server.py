@@ -1,18 +1,18 @@
-import socket
+import socket, pickle
 
-serverSocket = socket.socket()
+class Server:
+    def __init__(self):
+        self.clients = []
+        self.address = "localhost"
+        self.port = 6767
+    def run(self):
+        with socket.socket() as server:
+            server.bind(self.address, self.port)
+            server.listen(1)
 
-port = 6767
+            conn, _ = server.accept()
 
-serverSocket.bind(('', port))
-print(f"Socket binded to {port}!")
-
-serverSocket.listen(2)
-print("Socket is listening!")
-
-message_list = []
-
-while True:
-    connection, addr = serverSocket.accept()
-    print(f"Accepted connection from {addr}.")
-    
+            with conn:
+                data = conn.recv(4096)
+                message = pickle.loads(data)
+                

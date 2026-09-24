@@ -1,35 +1,31 @@
 import socket
 
-def test_connection(host='10.0.181.29', port=5100):
-    print("1. Creating the socket configuration...")
+def start_client(host='10.0.181.29', port=5100):
+    # 1. Create a socket object (AF_INET = IPv4, SOCK_STREAM = TCP)
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
-    # Restrict blocking to a maximum of 3 seconds
-    client_socket.settimeout(3.0) 
-    
     try:
-        print(f"2. Attempting connection to {host}:{port}... (Checking if blocked here)")
+        # 2. Connect to the server
         client_socket.connect((host, port))
-        print("   -> Success: Connected to server!")
+        print(f"[CONNECTED] Connected to server at {host}:{port}")
         
-        message = "Diagnostic ping"
-        print("3. Sending bytes down the wire...")
+        # 3. Define and send the message (must be encoded to bytes)
+        message = "Hello, Server! This is the client."
         client_socket.sendall(message.encode('utf-8'))
-        print("   -> Success: Data sent!")
+        print(f"[SENT] {message}")
         
-        print("4. Waiting to receive response from server... (Checking if blocked here)")
+        # 4. Receive response from the server (buffer size 1024 bytes)
         response = client_socket.recv(1024)
-        print(f"   -> Success: Received back: {response.decode('utf-8')}")
+        print(f"[RECEIVED] Server reply: {response.decode('utf-8')}")
         
-    except socket.timeout:
-        print("\n[DIAGNOSIS] The script timed out! Look at the last step printed above to see exactly where it froze.")
     except ConnectionRefusedError:
-        print("\n[DIAGNOSIS] Connection Refused. No server is listening on that port at all.")
+        print("[ERROR] Could not connect to the server. Is the server running?")
     except Exception as e:
-        print(f"\n[DIAGNOSIS] Unexpected error: {e}")
+        print(f"[ERROR] An error occurred: {e}")
     finally:
+        # 5. Always close the connection
         client_socket.close()
-        print("\n5. Socket safely closed.")
+        print("[CLOSED] Connection closed.")
 
 if __name__ == "__main__":
-    test_connection()
+    start_client()
