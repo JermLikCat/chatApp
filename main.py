@@ -1,4 +1,5 @@
-import os, subprocess, sys, asyncio
+import os, asyncio
+from datetime import datetime
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
@@ -17,8 +18,8 @@ class Message:
     def __init__(self, text: str, user_name: str, is_client: bool):
         self.text = text
         self.user_name = user_name
-        self.skibidi = "Rizzler"
         self.is_client = is_client
+        self.timestamp = datetime.now()
         self.horizontal_required_whitespace = 4 + len(text)
         self.vertical_required_whitespace = 3
 
@@ -27,6 +28,8 @@ class ChatDisplay:
         self.message_list = message_list
         self.rows_allocated = rows_allocated
         self.user_name = user_name
+        
+    
     async def display(self, terminal_width, terminal_height, padding: int = 0, message_multiline_margin: int = 20):
         while True:
             self.synced_display(terminal_width, terminal_height, padding, message_multiline_margin)
@@ -38,7 +41,7 @@ class ChatDisplay:
         # Clear and move down
         for _ in range(self.rows_allocated):
             print('\033[2K\033[B', end="")
-        print(f'\033[{self.rows_allocated}F', end="")
+        print('\033[H',end="")
         rows_taken = 0
         chatString = []
         for i, message in enumerate(self.message_list):
@@ -61,13 +64,15 @@ class ChatDisplay:
                 else:
                     chatString.append( (" " * padding + f"{component:<{terminal_width - padding}}") )
             rows_taken += len(components)
+        
         with patch_stdout():
             for i in range((rows_taken - self.rows_allocated - 1 if rows_taken - self.rows_allocated - 1 >= 0 else 0), rows_taken):
                 print(chatString[i])
             if rows_taken - self.rows_allocated - 1 < 0: 
-                print("\n" * (self.rows_allocated - rows_taken - 2), end="")
+                print("\n" * (self.rows_allocated - rows_taken-1), end="")
+            # Print divider
             print(" " * padding + HORIZONTAL_BOX_BORDER * (terminal_width - padding*2) + " " * padding)
-            print("\n" * (terminal_height - self.rows_allocated), end="")
+
 
     def chunk_string(self, string: str, length: int) -> list[str]:
         # Breaks it up into fixed size parts, obtained from https://stackoverflow.com/questions/18854620/whats-the-best-way-to-split-a-string-into-fixed-length-chunks-and-work-with-the
@@ -86,29 +91,14 @@ class ChatInput:
     async def display(self, terminal_width, terminal_height, padding: int = 0):
         """Displays the divider/padding required for input."""
         while True:
-            print("\033[H", end="")
-            print(f"\033[{str(terminal_height - self.rows_allocated + 1)}B", end="")
-
+            print(f"\033[{str(terminal_height - self.rows_allocated + 1)}H", end="")
+            print("\n" * (self.rows_allocated - 1), end="\r")
+            print(f"\033[{str(terminal_height - self.rows_allocated + 1)}H", end="\r")
             with patch_stdout():
-                ## go to where the input divider should be
                 text = await self.session.prompt_async(" " * padding + "> ") 
                 self.message_list.append(Message(r"{}".format(text), "Jeremy", True))
                 self.chat_display.synced_display(terminal_width, terminal_height, padding)
 
-
-        
-    """def display(self, terminal_width, padding: int = 0, default_text = ""):
-        ## allocate rows for the input box
-        print("\n" * self.rows_allocated, end="")
-        print("\x1b[999H" + "\033[2K \033[F" * self.rows_allocated, end="")
-        
-        ## Print the input box
-        print(" " * padding + HORIZONTAL_BOX_BORDER * (terminal_width - padding*2), end="")
-        print(" " * padding)
-        text = input(" " * padding + "> ") 
-        self.message_list.append(Message(r"{}".format(text), "Jeremy", True))"""
-        
-    
 
 class ChatApplication:
     def __init__(self):
@@ -118,16 +108,16 @@ class ChatApplication:
         ]
         self.user_name = "Jeremy"
         self.terminal_size = os.get_terminal_size()
-        self.chat_display = ChatDisplay(self.message_list, self.user_name, self.terminal_size[1])
-        self.chat_input = ChatInput(self.message_list, 2, self.chat_display)
+        self.chat_display = ChatDisplay(self.message_list, self.user_name, self.terminal_size[1]-5)
+        self.chat_input = ChatInput(self.message_list, 5, self.chat_display)
+        # TODO: in chat display print out the whole screen then add stuff to it
         self.padding=2
         asyncio.run(self.main())
 
     async def main(self):
         """Execute the actual program. Uses async to ensure that user can type while receiving messages."""
-        print("\x1b[2J")
-        print("\x1b[" + str(self.terminal_size[1] - 2 + 1) + "H", end="")
-        print("\033[s", end="")
+        print("\033[2J")
+        print("\x1b[H", end="")
         display_messages_task = asyncio.create_task(self.chat_display.display(self.terminal_size[0], self.terminal_size[1], self.padding))
         await self.chat_input.display(self.terminal_size[0], self.terminal_size[1], self.padding)
 
