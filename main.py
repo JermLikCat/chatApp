@@ -17,6 +17,7 @@ class Message:
     def __init__(self, text: str, user_name: str, is_client: bool):
         self.text = text
         self.user_name = user_name
+        self.skibidi = "Rizzler"
         self.is_client = is_client
         self.horizontal_required_whitespace = 4 + len(text)
         self.vertical_required_whitespace = 3
